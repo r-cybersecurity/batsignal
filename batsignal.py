@@ -30,6 +30,13 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
+    "-o",
+    "--override",
+    type=str,
+    help="Specify your own report message, otherwise uses a default composition.",
+    default="",
+)
+parser.add_argument(
     "-t",
     "--type",
     type=str,
@@ -55,8 +62,8 @@ parser.add_argument(
     "-s",
     "--sleep",
     type=int,
-    help="How many seconds should we sleep between reports? Default: 10",
-    default=10,
+    help="How many seconds should we sleep between checking each submission/comment? Default: 1",
+    default=1,
 )
 
 args = parser.parse_args()
@@ -73,7 +80,10 @@ print(
     f'batsignal will read {args.user}\'s history and report anything with "{args.destroy}" in it up to {args.notifications}x per subreddit'
 )
 
-report_text = f"u/{args.user} is {args.reason} {args.destroy}, check user history"
+if len(args.override) < 1:
+    report_text = f"u/{args.user} is {args.reason} {args.destroy}, check user history"
+else:
+    report_text = args.override
 print(f'reports made will be: "{report_text}", CTRL+C in 5s or batsignal will proceed')
 sleep(5)
 
@@ -82,6 +92,7 @@ if args.type in ["submissions", "both"]:
     stats = {"failed": 0, "passed": 0}
 
     for submission in reddit.redditor(args.user).submissions.new(limit=args.count):
+        sleep(args.sleep)
         report_submission = False
 
         if hasattr(submission, "crosspost_parent"):
@@ -125,7 +136,6 @@ if args.type in ["submissions", "both"]:
             stats["passed"] += 1
             print(f"PASS: {submission.permalink}")
 
-        sleep(args.sleep)
     print(
         f"done reading {args.user}'s submission history! pass: {stats['passed']}, fail: {stats['failed']}"
     )
@@ -135,6 +145,7 @@ if args.type in ["comments", "both"]:
     stats = {"failed": 0, "passed": 0}
 
     for comment in reddit.redditor(args.user).comments.new(limit=args.count):
+        sleep(args.sleep)
         if args.destroy.lower() in comment.body.lower():
             print(f"FAIL: {comment.permalink} contains {args.destroy} ...")
 
@@ -162,7 +173,6 @@ if args.type in ["comments", "both"]:
             stats["passed"] += 1
             print(f"PASS: {comment.permalink}")
 
-        sleep(args.sleep)
     print(
         f"done reading {args.user}'s comment history! pass: {stats['passed']}, fail: {stats['failed']}"
     )
