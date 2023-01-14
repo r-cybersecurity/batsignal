@@ -1,7 +1,9 @@
 import argparse
 import praw
-from config import *
+import os
 from time import sleep
+from config import *
+from batsignal import batsignal
 
 parser = argparse.ArgumentParser(
     description=(
@@ -12,7 +14,7 @@ parser.add_argument(
     "-u",
     "--user",
     type=str,
-    help="What user is exhibiting bad behavior?",
+    help="What user is exhibiting bad behavior? (or: a file containing a list of usernames, one per line)",
     required=True,
 )
 parser.add_argument(
@@ -68,6 +70,12 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+if os.path.isfile(args.user):
+    with open(args.user) as f:
+        users = [line.rstrip('\n') for line in f]
+else:
+    users = [args.user]
+
 reddit = praw.Reddit(
     client_id=praw_client_id,
     client_secret=praw_client_secret,
@@ -75,104 +83,19 @@ reddit = praw.Reddit(
     user_agent="r-cybersecurity/batsignal",
 )
 
-report_targets = {}
-print(
-    f'batsignal will read {args.user}\'s history and report anything with "{args.destroy}" in it up to {args.notifications}x per subreddit'
-)
+for user in users:
+    if len(args.override) < 1:
+        report_text = f"u/{user} is {args.reason} {args.destroy}, check user history"
+    else:
+        report_text = args.override
 
-if len(args.override) < 1:
-    report_text = f"u/{args.user} is {args.reason} {args.destroy}, check user history"
-else:
-    report_text = args.override
-print(f'reports made will be: "{report_text}", CTRL+C in 5s or batsignal will proceed')
-sleep(5)
-
-if args.type in ["submissions", "both"]:
-    print(f"reading {args.user}'s submission history ...")
-    stats = {"failed": 0, "passed": 0}
-
-    for submission in reddit.redditor(args.user).submissions.new(limit=args.count):
-        sleep(args.sleep)
-        report_submission = False
-
-        if hasattr(submission, "crosspost_parent"):
-            print(f"INFO: {submission.permalink} is a crosspost")
-            op = reddit.submission(id=submission.crosspost_parent.split("_")[1])
-            if (
-                args.destroy.lower() in op.title.lower()
-                or args.destroy.lower() in op.selftext.lower()
-                or args.destroy.lower() in op.url.lower()
-            ):
-                report_submission = True
-                print(f"FAIL: crossposted {op.permalink} contains {args.destroy} ...")
-        if (
-            args.destroy.lower() in submission.title.lower()
-            or args.destroy.lower() in submission.selftext.lower()
-            or args.destroy.lower() in submission.url.lower()
-        ):
-            report_submission = True
-            print(f"FAIL: {submission.permalink} contains {args.destroy} ...")
-
-        if report_submission:
-            if submission.subreddit in report_targets.keys():
-                if report_targets[submission.subreddit] >= args.notifications:
-                    print(
-                        f"      skipping since r/{submission.subreddit} has already received {args.notifications} reports"
-                    )
-                    continue
-                report_targets[submission.subreddit] += 1
-            else:
-                report_targets[submission.subreddit] = 1
-
-            try:
-                stats["failed"] += 1
-                submission.report(report_text)
-                print(f"      report complete to r/{submission.subreddit}")
-            except Exception as e:
-                print(f"      report failed to r/{submission.subreddit}, whatever")
-                pass
-
-        else:
-            stats["passed"] += 1
-            print(f"PASS: {submission.permalink}")
-
-    print(
-        f"done reading {args.user}'s submission history! pass: {stats['passed']}, fail: {stats['failed']}"
-    )
-
-if args.type in ["comments", "both"]:
-    print(f"reading {args.user}'s comment history ...")
-    stats = {"failed": 0, "passed": 0}
-
-    for comment in reddit.redditor(args.user).comments.new(limit=args.count):
-        sleep(args.sleep)
-        if args.destroy.lower() in comment.body.lower():
-            print(f"FAIL: {comment.permalink} contains {args.destroy} ...")
-
-            if comment.subreddit in report_targets.keys():
-                if report_targets[comment.subreddit] >= args.notifications:
-                    print(
-                        f"      skipping since r/{comment.subreddit} has already received {args.notifications} reports"
-                    )
-                    continue
-                report_targets[comment.subreddit] = (
-                    report_targets[comment.subreddit] + 1
-                )
-            else:
-                report_targets[comment.subreddit] = 1
-
-            try:
-                stats["failed"] += 1
-                comment.report(report_text)
-                print(f"      report complete to r/{comment.subreddit}")
-            except Exception as e:
-                print(f"      report failed to r/{comment.subreddit}, whatever")
-                pass
-
-        else:
-            stats["passed"] += 1
-            print(f"PASS: {comment.permalink}")
-
-    print(
-        f"done reading {args.user}'s comment history! pass: {stats['passed']}, fail: {stats['failed']}"
+    batsignal.batsignal(
+        reddit,
+        args.type,
+        user,
+        args.destroy,
+        report_text,
+        args.sleep,
+        args.count,
+        args.notifications
     )
