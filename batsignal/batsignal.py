@@ -1,7 +1,9 @@
 from time import sleep
 
 
-def batsignal(reddit, what, user, target, report, nap, limit, notifs, if_report_fails_try):
+def batsignal(
+    reddit, what, user, target, report, nap, limit, notifs, if_report_fails_try
+):
     report_targets = {}
     print(
         f'batsignal will read {user}\'s history and report anything with "{target}" in it up to {notifs}x per subreddit'
@@ -44,23 +46,8 @@ def batsignal(reddit, what, user, target, report, nap, limit, notifs, if_report_
                 else:
                     report_targets[submission.subreddit] = 1
 
-                try:
-                    stats["failed"] += 1
-                    submission.report(report)
-                    print(f"      report complete to r/{submission.subreddit}")
-                except Exception as e:
-                    if if_report_fails_try == "N/A":
-                        print(f"      report failed to r/{submission.subreddit}, whatever")
-                        pass
-                    else:
-                        sleep(nap)
-                        try:
-                            submission.report(if_report_fails_try)
-                            print(f"      non-custom report complete to r/{submission.subreddit}")
-                        except Exception as e2:
-                            print(f"      both custom and non-custom reports failed to r/{submission.subreddit}")
-                            pass
-
+                stats["failed"] += 1
+                do_report(submission, report, if_report_fails_try)
             else:
                 stats["passed"] += 1
                 print(f"PASS: {submission.permalink}")
@@ -90,22 +77,8 @@ def batsignal(reddit, what, user, target, report, nap, limit, notifs, if_report_
                 else:
                     report_targets[comment.subreddit] = 1
 
-                try:
-                    stats["failed"] += 1
-                    comment.report(report)
-                    print(f"      report complete to r/{comment.subreddit}")
-                except Exception as e:
-                    if if_report_fails_try == "N/A":
-                        print(f"      report failed to r/{comment.subreddit}, whatever")
-                        pass
-                    else:
-                        sleep(nap)
-                        try:
-                            comment.report(if_report_fails_try)
-                            print(f"      non-custom report complete to r/{comment.subreddit}")
-                        except Exception as e2:
-                            print(f"      both custom and non-custom reports failed to r/{comment.subreddit}")
-                            pass
+                stats["failed"] += 1
+                do_report(comment, report, if_report_fails_try)
 
             else:
                 stats["passed"] += 1
@@ -114,3 +87,23 @@ def batsignal(reddit, what, user, target, report, nap, limit, notifs, if_report_
         print(
             f"done reading {user}'s comment history! pass: {stats['passed']}, fail: {stats['failed']}"
         )
+
+
+def do_report(target, report, backup_report):
+    try:
+        target.report(report)
+        print(f"      report complete to r/{target.subreddit}")
+        return
+    except Exception as e:
+        if backup_report == "N/A":
+            print(f"      report failed to r/{target.subreddit}, whatever")
+            return
+
+    print(f"      custom report failed to r/{target.subreddit}, waiting 200ms ...")
+    sleep(0.2)
+    try:
+        target.report(backup_report)
+        print(f"      non-custom report complete to r/{target.subreddit}")
+    except Exception as e2:
+        print(f"      both reports failed to r/{target.subreddit}, something is wrong")
+        pass
