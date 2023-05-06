@@ -67,12 +67,20 @@ parser.add_argument(
     help="How many seconds should we sleep between checking each submission/comment? Default: 1",
     default=1,
 )
+parser.add_argument(
+    "-i",
+    "--if-report-fails-try",
+    type=str,
+    help="If custom reports aren't accepted, what should we report the content as? Default: N/A",
+    default="N/A",
+    choices={"Spam", "N/A"},
+)
 
 args = parser.parse_args()
 
 if os.path.isfile(args.user):
     with open(args.user) as f:
-        users = [line.rstrip('\n') for line in f]
+        users = [line.rstrip("\n") for line in f]
 else:
     users = [args.user]
 
@@ -97,5 +105,6 @@ for user in users:
         report_text,
         args.sleep,
         args.count,
-        args.notifications
+        args.notifications,
+        args.if_report_fails_try,
     )

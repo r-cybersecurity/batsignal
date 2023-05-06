@@ -1,6 +1,7 @@
 from time import sleep
 
-def batsignal(reddit, what, user, target, report, nap, limit, notifs):
+
+def batsignal(reddit, what, user, target, report, nap, limit, notifs, if_report_fails_try):
     report_targets = {}
     print(
         f'batsignal will read {user}\'s history and report anything with "{target}" in it up to {notifs}x per subreddit'
@@ -48,8 +49,17 @@ def batsignal(reddit, what, user, target, report, nap, limit, notifs):
                     submission.report(report)
                     print(f"      report complete to r/{submission.subreddit}")
                 except Exception as e:
-                    print(f"      report failed to r/{submission.subreddit}, whatever")
-                    pass
+                    if if_report_fails_try == "N/A":
+                        print(f"      report failed to r/{submission.subreddit}, whatever")
+                        pass
+                    else:
+                        sleep(nap)
+                        try:
+                            submission.report(if_report_fails_try)
+                            print(f"      non-custom report complete to r/{submission.subreddit}")
+                        except Exception as e2:
+                            print(f"      both custom and non-custom reports failed to r/{submission.subreddit}")
+                            pass
 
             else:
                 stats["passed"] += 1
@@ -85,8 +95,17 @@ def batsignal(reddit, what, user, target, report, nap, limit, notifs):
                     comment.report(report)
                     print(f"      report complete to r/{comment.subreddit}")
                 except Exception as e:
-                    print(f"      report failed to r/{comment.subreddit}, whatever")
-                    pass
+                    if if_report_fails_try == "N/A":
+                        print(f"      report failed to r/{comment.subreddit}, whatever")
+                        pass
+                    else:
+                        sleep(nap)
+                        try:
+                            comment.report(if_report_fails_try)
+                            print(f"      non-custom report complete to r/{comment.subreddit}")
+                        except Exception as e2:
+                            print(f"      both custom and non-custom reports failed to r/{comment.subreddit}")
+                            pass
 
             else:
                 stats["passed"] += 1
