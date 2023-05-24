@@ -37,7 +37,7 @@ def batsignal(
 
             if report_submission:
                 if submission.subreddit in report_targets.keys():
-                    if report_targets[submission.subreddit] >= notifs:
+                    if report_targets[submission.subreddit] >= notifs and notifs != -1:
                         print(
                             f"      skipping since r/{submission.subreddit} has already received {notifs} reports"
                         )
@@ -66,7 +66,7 @@ def batsignal(
                 print(f"FAIL: {comment.permalink} contains {target} ...")
 
                 if comment.subreddit in report_targets.keys():
-                    if report_targets[comment.subreddit] >= notifs:
+                    if report_targets[comment.subreddit] >= notifs and notifs != -1:
                         print(
                             f"      skipping since r/{comment.subreddit} has already received {notifs} reports"
                         )

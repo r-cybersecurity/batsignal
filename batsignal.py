@@ -32,17 +32,10 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
-    "-o",
-    "--override",
-    type=str,
-    help="Specify your own report message, otherwise uses a default composition.",
-    default="",
-)
-parser.add_argument(
     "-t",
     "--type",
     type=str,
-    help="Should batsignal check posts, comments, or both?",
+    help="Should batsignal check posts, comments, or both? Default: both",
     default="both",
     choices={"submissions", "comments", "both"},
 )
@@ -50,15 +43,15 @@ parser.add_argument(
     "-c",
     "--count",
     type=int,
-    help="How many posts/comments should we check? Default: 10k (all)",
+    help="How many posts/comments should we check? Default: 10k (maximum due to Reddit API limitation)",
     default=10000,
 )
 parser.add_argument(
     "-n",
     "--notifications",
     type=int,
-    help="How many reports should each impacted subreddit receive? Default: 1",
-    default=1,
+    help="How many reports should each impacted subreddit receive? Default: no limit",
+    default=-1,
 )
 parser.add_argument(
     "-s",
@@ -92,17 +85,12 @@ reddit = praw.Reddit(
 )
 
 for user in users:
-    if len(args.override) < 1:
-        report_text = f"u/{user} is {args.reason} {args.destroy}, check user history"
-    else:
-        report_text = args.override
-
     batsignal.batsignal(
         reddit,
         args.type,
         user,
         args.destroy,
-        report_text,
+        args.reason,
         args.sleep,
         args.count,
         args.notifications,
